@@ -21,7 +21,7 @@ Realizar uma análise estatística dos acessos de banda larga fixa no Brasil, co
   - Tecnologia
   - Transmissão
   - Velocidade
-  - 
+  
 ### 👥 Integrantes
 
 - João Carlos Guimarães Iannuzzi
