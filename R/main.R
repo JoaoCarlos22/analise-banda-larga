@@ -1,16 +1,26 @@
-# instalar os pacotes: basedosdados, tidyverse, bigrquery
+# Instale os pacotes necessários (apenas se ainda não instalou)
+# install.packages("basedosdados")
+# install.packages("tidyverse")
+# install.packages("bigrquery")
+# install.packages("arrow")
 
 library(basedosdados)
 library(tidyverse)
 library(bigrquery)
+library(arrow)
 
-# Etapa 1: Autenticar com sua conta Google
-bq_auth()
+# --- ETAPA 1: Autenticação Google ---
+bq_auth()  # Abre janela para login Google
 
-# Etapa 2: Definir o id do seu projeto no Google Cloud
-basedosdados::set_billing_id("projetofinalgr03-461420")
+# --- ETAPA 2: Definir o billing_id de forma segura ---
+billing_id <- Sys.getenv("GCP_BILLING_ID")  # Defina no seu .Renviron
 
-# Etapa 3: Definir a consulta SQL
+# Checa se o billing_id foi carregado corretamente
+if (billing_id == "") stop("GCP_BILLING_ID não encontrado no .Renviron!")
+
+set_billing_id(billing_id)
+
+# --- ETAPA 3: Definir a consulta SQL ---
 query <- "
 SELECT
     dados.ano as ano,
@@ -19,12 +29,21 @@ SELECT
     dados.acessos as acessos,
     dados.velocidade as velocidade,
     dados.produto as produto,
-    dados.tecnologia as tecnologia
+    dados.tecnologia as tecnologia,
+    dados.sigla_uf AS sigla_uf,
+    diretorio_sigla_uf.nome AS sigla_uf_nome
 FROM `basedosdados.br_anatel_banda_larga_fixa.microdados` AS dados
+LEFT JOIN (
+    SELECT DISTINCT sigla, nome
+    FROM `basedosdados.br_bd_diretorios_brasil.uf`
+) AS diretorio_sigla_uf
+ON dados.sigla_uf = diretorio_sigla_uf.sigla
+WHERE dados.ano BETWEEN 2007 AND 2024
 "
 
-# Etapa 4: Executar a consulta e salvar os dados
-dataframe <- basedosdados::read_sql(query, billing_project_id = get_billing_id())
+# --- ETAPA 4: Executar a consulta SQL ---
+dataframe <- read_sql(query, billing_project_id = get_billing_id())
 
-# Etapa 5: Armazenar os dados localmente
-write_csv(dataframe, "data/dataframe.csv")
+# --- ETAPA 5: Salvar os dados localmente em Parquet ---
+dir.create("data", showWarnings = FALSE)  # Cria pasta se não existir
+write_parquet(dataframe, "data/dados.parquet")
